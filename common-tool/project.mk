@@ -336,7 +336,7 @@ $(apps) $(components): common
 	@echo "[apps/$@] done."
 
 PHONY += clean
-clean:
+clean: camkes-debug-clean
 	@echo "[CLEAN] in $(PWD)"
 	@if [ -d $(BUILD_ROOT) ]; then echo " [BUILD] $(BUILD_ROOT)"; \
 		rm -fr $(BUILD_ROOT); fi
