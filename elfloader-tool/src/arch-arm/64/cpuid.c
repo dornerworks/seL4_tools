@@ -20,6 +20,14 @@ word_t is_hyp_mode(void)
     return (val == CURRENTEL_EL2);
 }
 
+#define CURRENTEL_EL3           (3 << 2)
+word_t is_el3(void)
+{
+    uint32_t val;
+    asm volatile("mrs %0, CurrentEL" : "=r" (val) :: "cc");
+    return (val == CURRENTEL_EL3);
+}
+
 uint32_t read_cpuid_id(void)
 {
     uint32_t val;

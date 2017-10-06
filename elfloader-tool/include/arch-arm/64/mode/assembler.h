@@ -25,6 +25,11 @@
 #define PSR_MODE_EL2t     0x00000008
 #define PSR_MODE_EL2h     0x00000009
 
+#define SCR_RW_BIT        0x00000400
+#define SCR_HCE_BI        0x00000100
+#define SCR_SMD_BI        0x00000080
+#define SCR_NS_BIT        0x00000001
+
 #define TCR_T0SZ(x)       ((64 - (x)))
 #define TCR_T1SZ(x)       ((64 - (x)) << 16)
 #define TCR_TxSZ(x)       (TCR_T0SZ(x) | TCR_T1SZ(x))

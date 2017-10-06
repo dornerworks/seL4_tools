@@ -33,6 +33,7 @@
 #define PMODE_IRQ           0x12
 #define PMODE_SUPERVISOR    0x13
 #define PMODE_ABORT         0x17
+#define PMODE_HYPERVISOR    0x1a
 #define PMODE_UNDEFINED     0x1b
 #define PMODE_SYSTEM        0x1f
 
@@ -45,6 +46,11 @@
                             | PMASK_IRQ          \
                             | PMASK_ASYNC_ABORT  \
                             | PMODE_SUPERVISOR   )
+
+#define CPSR_HYPERVISOR     ( PMASK_FIRQ         \
+                            | PMASK_IRQ          \
+                            | PMASK_ASYNC_ABORT  \
+                            | PMODE_HYPERVISOR   )
 
 #else /* !__ASSEMBLER__ */
 #warning "Including assembly-specific header in C code"

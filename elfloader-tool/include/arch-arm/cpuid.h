@@ -23,6 +23,12 @@ uint32_t read_cpuid_mpidr(void);
 /* check if CPU is in HYP/EL2 mode */
 word_t is_hyp_mode(void);
 
+/* check if CPU is in EL3 */
+word_t is_el3(void);
+
+/* leave EL3 */
+void leave_el3(void);
+
 /* Pretty print CPUID information */
 void print_cpuid(void);
 

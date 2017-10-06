@@ -29,6 +29,14 @@ word_t is_hyp_mode(void)
     return ((val & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR);
 }
 
+#define CPSR_MODE_SYSTEM    0x1f
+word_t is_el3(void)
+{
+    uint32_t val;
+    asm volatile("mrs %0, cpsr" : "=r" (val) :: "cc");
+    return ((val & CPSR_MODE_MASK) == CPSR_MODE_SYSTEM);
+}
+
 /* read ID register from CPUID */
 uint32_t read_cpuid_id(void)
 {

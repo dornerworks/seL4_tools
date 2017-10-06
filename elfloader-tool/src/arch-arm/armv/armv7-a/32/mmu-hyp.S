@@ -31,6 +31,14 @@ BEGIN_FUNC(leave_hyp)
     eret
 END_FUNC(leave_hyp)
 
+BEGIN_FUNC(leave_el3)
+    .arch_extension sec
+    ldr r0, =CPSR_HYPERVISOR
+    msr spsr, r0
+    msr sp_hyp, sp
+    movs pc, lr
+END_FUNC(leave_el3)
+
 /*
  * Enable the ARM MMU.
  *
