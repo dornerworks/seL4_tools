@@ -25,5 +25,31 @@
 
 #define UART_PPTR              ZYNQMP_UART0_BASE
 
+#define IOU_SECURE_SCLR_WR       0xFF240000
+#define IOU_SECURE_SCLR_RD       0xFF240000
+
+#define IOU_SECURE_SLCR_PRIV     0x1
+#define IOU_SECURE_SLCR_NS       0x2
+#define IOU_SECURE_SLCR_INST     0x4
+
+#define IOU_SECURE_SLCR_BITS     3
+
+#define IOU_SECURE_SLCR_DEVMASK(x) (0x7 << (x))
+#define IOU_SECURE_SLCR_DEVBITS(x,y) (((x) & IOU_SECURE_SLCR_DEVMASK(x)) \
+                                      << ((y) * IOU_SECURE_SLCR_BITS))
+
+enum iou_secure_slcr_dev
+{
+   GEM0 = 0,
+   GEM1,
+   GEM2,
+   GEM3,
+   RES,
+   SD0,
+   SD1,
+   NAND,
+   QSPI,
+   NUM_IOU_SECURE_SLCR_DEVS,
+};
 
 #endif /* _PLATFORM_H_ */

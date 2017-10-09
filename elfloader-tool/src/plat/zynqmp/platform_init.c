@@ -23,6 +23,8 @@
 #include <sys_fputc.h>
 #include <cpuid.h>
 
+#include <platform.h>
+
 void platform_init(void)
 {
     enable_uart();
@@ -30,6 +32,23 @@ void platform_init(void)
 #ifdef CONFIG_ARM_HYPERVISOR_SUPPORT
     if(is_el3())
     {
+#ifdef CONFIG_ARM_SMMU
+       /*
+          Peripherals default to secure, which doesn't work with a hypervisor
+          that is by definition non-secure.  Set perpipherals used by the
+          system to non-secure.
+       */
+       uint32_t *reg = (uint32_t*)IOU_SECURE_SCLR_WR;
+       uint32_t val = *reg;
+
+       val &= ~IOU_SECURE_SLCR_DEVMASK(GEM0);
+       val |= IOU_SECURE_SLCR_DEVBITS(IOU_SECURE_SLCR_NS, GEM0);
+
+       *reg = val;
+
+       reg = (uint32_t*)IOU_SECURE_SCLR_RD;
+#endif
+
        leave_el3();
     }
 #endif
