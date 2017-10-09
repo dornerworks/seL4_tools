@@ -17,10 +17,21 @@
  * Approved for Public Release, Distribution Unlimited.
  */
 
+#include <autoconf.h>
+
 #include <elfloader.h>
 #include <sys_fputc.h>
+#include <cpuid.h>
 
 void platform_init(void)
 {
     enable_uart();
+
+#ifdef CONFIG_ARM_HYPERVISOR_SUPPORT
+    if(is_el3())
+    {
+       leave_el3();
+    }
+#endif
+
 }

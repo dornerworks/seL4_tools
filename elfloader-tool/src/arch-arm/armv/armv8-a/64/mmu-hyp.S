@@ -115,12 +115,6 @@ BEGIN_FUNC(arm_enable_hyp_mmu)
     ret
 END_FUNC(arm_enable_hyp_mmu)
 
-BEGIN_FUNC(invalidate_el3_tlb)
-    tlbi    alle3
-    dsb     sy
-    isb
-END_FUNC(invalidate_el3_tlb)
-
 BEGIN_FUNC(leave_el3)
     /* We call nested functions, follow the ABI. */
     stp     x29, x30, [sp, #-16]!
@@ -130,7 +124,6 @@ BEGIN_FUNC(leave_el3)
     disable_mmu sctlr_el3, x19
     bl      flush_dcache
     bl      invalidate_icache
-    bl      invalidate_el3_tlb
 
     /* Disable coprocessor traps to EL3&2 */
     msr     cptr_el3, xzr
@@ -141,7 +134,7 @@ BEGIN_FUNC(leave_el3)
     /* Initialize EL2 */
     msr     cntvoff_el2, xzr
 
-    mov     x19, #0x10450830 /* RES1 bits */
+    ldr     x19, =0x30C50830 /* RES1 bits */
     msr     sctlr_el2, x19
 
     /* EL2 is AArch64 and Non-secure EL1/0 */
@@ -149,13 +142,8 @@ BEGIN_FUNC(leave_el3)
     msr     scr_el3, x19
 
     /* Return to the EL2_SP2 mode from EL3 with MMUs and cache disabled */
-    mov     x19, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT
-                 | PSR_MODE_EL2h)
+    mov     x19, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT | PSR_MODE_EL2h)
     msr     spsr_el3, x19
-
-    /* Migrate from EL3 -> EL2 */
-    mrs     x0, vbar_el3
-    msr     vbar_el2, x19
 
     ldp     x29, x30, [sp], #16
     mov     x28, sp
