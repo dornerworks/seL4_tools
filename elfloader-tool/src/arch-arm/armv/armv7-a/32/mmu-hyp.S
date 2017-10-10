@@ -40,6 +40,23 @@ BEGIN_FUNC(leave_sys)
     bx  lr
 END_FUNC(leave_sys)
 
+BEGIN_FUNC(enable_hyp)
+    .arch_extension virt
+    /* Enable non-secure hypervisor (SCR) */
+    mrc  p15, 0, r1, c1, c1, 0
+    orr  r1, r1, #0x31
+    orr  r1, r1, #0x100
+    mcr  p15, 0, r1, c1, c1, 0
+    isb
+    /* Clear VOFF */
+    mov  r1, #0
+    mcrr p15, 4, r1, r1, c14
+    /* Reset HSCTLR */
+    ldr  r1, =0x30C50830
+    mcr  p15, 4, r1, c1, c0, 0
+    bx   lr
+END_FUNC(enable_hyp)
+
 BEGIN_FUNC(leave_el3)
     .arch_extension sec
     mrs r3, CPSR
@@ -48,8 +65,9 @@ BEGIN_FUNC(leave_el3)
     beq in_mon
     mov r0, lr
     bl  leave_sys
-    mov lr, r0
 in_mon:
+    bl  enable_hyp
+    mov lr, r0
     ldr r0, =CPSR_HYPERVISOR
     msr spsr_mon, r0
     msr sp_hyp, sp
