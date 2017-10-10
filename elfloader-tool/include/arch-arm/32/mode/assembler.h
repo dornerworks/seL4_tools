@@ -32,10 +32,14 @@
 #define PMODE_FIQ           0x11
 #define PMODE_IRQ           0x12
 #define PMODE_SUPERVISOR    0x13
+#define PMODE_MONITOR       0x16
 #define PMODE_ABORT         0x17
 #define PMODE_HYPERVISOR    0x1a
 #define PMODE_UNDEFINED     0x1b
 #define PMODE_SYSTEM        0x1f
+
+/* Processor mode mask bits */
+#define PMASK_MODE          (0x1f << 0)
 
 /* Processor exception mask bits */
 #define PMASK_ASYNC_ABORT   (1 << 8)
@@ -46,6 +50,11 @@
                             | PMASK_IRQ          \
                             | PMASK_ASYNC_ABORT  \
                             | PMODE_SUPERVISOR   )
+
+#define CPSR_MONITOR        ( PMASK_FIRQ         \
+                            | PMASK_IRQ          \
+                            | PMASK_ASYNC_ABORT  \
+                            | PMODE_MONITOR   )
 
 #define CPSR_HYPERVISOR     ( PMASK_FIRQ         \
                             | PMASK_IRQ          \

@@ -31,12 +31,30 @@ BEGIN_FUNC(leave_hyp)
     eret
 END_FUNC(leave_hyp)
 
+BEGIN_FUNC(leave_sys)
+    .arch_extension sec
+    msr lr_mon, lr
+    msr sp_mon, sp
+    cps #PMODE_MONITOR
+    isb
+    bx  lr
+END_FUNC(leave_sys)
+
 BEGIN_FUNC(leave_el3)
     .arch_extension sec
+    mrs r3, CPSR
+    and r3, r3, #PMASK_MODE
+    cmp r3, #PMODE_MONITOR
+    beq in_mon
+    mov r0, lr
+    bl  leave_sys
+    mov lr, r0
+in_mon:
     ldr r0, =CPSR_HYPERVISOR
-    msr spsr, r0
+    msr spsr_mon, r0
     msr sp_hyp, sp
-    movs pc, lr
+    isb
+    eret
 END_FUNC(leave_el3)
 
 /*
