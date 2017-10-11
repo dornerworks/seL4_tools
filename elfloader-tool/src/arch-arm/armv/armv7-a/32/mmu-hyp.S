@@ -54,6 +54,13 @@ BEGIN_FUNC(enable_hyp)
     /* Reset HSCTLR */
     ldr  r1, =0x30C50830
     mcr  p15, 4, r1, c1, c0, 0
+    /* Enable NS access to FP/SIMD (NSACR, HCPTR, and CPACR) */
+    ldr  r1, =0x00000C00
+    mcr  p15, 0, r1, c1, c1, 2
+    ldr  r1, =0x000033FF
+    mcr  p15, 4, r1, c1, c1, 2
+    ldr  r1, =0x00F00000
+    mcr  p15, 0, r1, c1, c0, 2
     bx   lr
 END_FUNC(enable_hyp)
 
