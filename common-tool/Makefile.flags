@@ -146,6 +146,14 @@ ifeq ($(CONFIG_ARCH_AARCH64),y)
 	export KERNEL_64 = y
 	export SEL4_ARCH = aarch64
 	export TYPE_SUFFIX = 64
+
+    ifeq ($(CONFIG_ARM_HYPERVISOR_SUPPORT),y)
+        export SEL4_ARCH = aarch64_hyp
+        export AARCH64_HYP = 1
+        DEFINES += AARCH64_HYP
+    else
+        export SEL4_ARCH = aarch64
+    endif
 endif
 
 ifeq ($(CONFIG_ARM1136JF_S),y)

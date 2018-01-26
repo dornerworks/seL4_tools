@@ -44,7 +44,7 @@ case "$PLAT" in
         FORMAT=elf32-littlearm
         ;;
     "hikey"|"zynqmp")
-        if [ "$SEL4_ARCH" == "aarch64" ]
+        if [[ "$SEL4_ARCH" == "aarch64" || "$SEL4_ARCH" == "aarch64_hyp" ]]
         then
             FORMAT=elf64-littleaarch64
         else
