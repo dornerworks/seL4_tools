@@ -3,11 +3,13 @@
  * Commonwealth Scientific and Industrial Research Organisation (CSIRO)
  * ABN 41 687 119 230.
  *
+ * Copyright 2018, DornerWorks
+ *
  * This software may be distributed and modified according to the terms of
  * the GNU General Public License version 2. Note that NO WARRANTY is provided.
  * See "LICENSE_GPLv2.txt" for details.
  *
- * @TAG(DATA61_GPL)
+ * @TAG(DATA61_DORNERWORKS_GPL)
  */
 
 #include <assembler.h>
@@ -92,7 +94,10 @@ BEGIN_FUNC(arm_enable_hyp_mmu)
                  MAIR(0x44, MT_NORMAL_NC) | \
                  MAIR(0xff, MT_NORMAL)
     msr     mair_el2, x5
-    ldr     x8, =TCR_T0SZ(48) | TCR_IRGN0_WBWC | TCR_ORGN0_WBWC | TCR_SH0_ISH | TCR_TG0_4K | TCR_PS_16T | TCR_EL2_RES1
+
+    ldr     x8, =TCR_T0SZ(48) | TCR_IRGN0_WBWC | TCR_ORGN0_WBWC | TCR_SH0_ISH | TCR_TG0_4K | TCR_EL2_RES1
+    mrs     x9, ID_AA64MMFR0_EL1
+    bfi     x8, x9, #16, #3
     msr     tcr_el2, x8
     isb
 
