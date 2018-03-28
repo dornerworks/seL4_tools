@@ -47,6 +47,15 @@ case "$PLAT" in
         ENTRY_ADDR=0x82000000;
         FORMAT=elf32-littlearm
         ;;
+    "imx8")
+        ENTRY_ADDR=0x880000000;
+        if [ "$SEL4_ARCH" == "aarch64" ]
+        then
+            FORMAT=elf64-littleaarch64
+        else
+            FORMAT=elf32-littlearm
+        fi
+        ;;
     "zynq7000")
         ENTRY_ADDR=0x10000000;
         FORMAT=elf32-littlearm

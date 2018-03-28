@@ -309,6 +309,12 @@ ifeq ($(CONFIG_PLAT_IMX7),y)
 	export PLAT=imx7
 endif
 
+ifeq ($(CONFIG_PLAT_IMX8),y)
+	DEFINES += IMX8
+	DEFINES += PLAT_IMX8
+	export PLAT=imx8
+endif
+
 ifeq ($(CONFIG_PLAT_ZYNQ7000),y)
 	DEFINES += PLAT_ZYNQ7000
 	export PLAT=zynq7000
@@ -404,6 +410,10 @@ endif
 
 ifeq ($(CONFIG_FASTPATH),y)
 	DEFINES += FASTPATH
+endif
+
+ifeq ($(CONFIG_HAVE_PLAT_SCU),y)
+	export HAVE_PLAT_SCU=y
 endif
 
 # beware, the CPPFLAGS is also used during compiling, so we don't need to
