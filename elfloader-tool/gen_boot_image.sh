@@ -48,7 +48,7 @@ case "$PLAT" in
         FORMAT=elf32-littlearm
         ;;
     "imx8")
-        ENTRY_ADDR=0x880000000;
+        ENTRY_ADDR=0x900000000;
         if [[ "$SEL4_ARCH" == "aarch64" || "$SEL4_ARCH" == "aarch64_hyp" ]]
         then
             FORMAT=elf64-littleaarch64
