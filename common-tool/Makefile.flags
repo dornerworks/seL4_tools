@@ -348,6 +348,14 @@ ifeq ($(CONFIG_PLAT_BCM2837),y)
 	export PLAT=bcm2837
 endif
 
+ifeq ($(CONFIG_HAVE_GIC_390),y)
+    export GIC=390
+endif
+
+ifeq ($(CONFIG_HAVE_GIC_500),y)
+    export GIC=500
+endif
+
 ifeq ($(CONFIG_IMAGE_EFI),y)
 	DEFINES += EFI
 	export __EFI__ = y
