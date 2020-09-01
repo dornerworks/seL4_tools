@@ -8,6 +8,7 @@
 # and bundling it with a kernel.elf and any required loaders into an `images` directory
 # in the top level build directory.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/bootenv.cmake")
 
 # Helper function for modifying the linker flags of a target to set the entry point as _sel4_start
 function(SetSeL4Start target)
@@ -30,16 +31,11 @@ mark_as_advanced(TLS_ROOTSERVER)
 find_file(UIMAGE_TOOL make-uimage PATHS "${CMAKE_CURRENT_LIST_DIR}" CMAKE_FIND_ROOT_PATH_BOTH)
 mark_as_advanced(UIMAGE_TOOL)
 
-config_option(
-    UseRiscVBBL RISCV_BBL "Use the Berkeley Boot Loader."
-    DEFAULT ON
+config_string(
+    UseBootEnv BOOT_ENV "Use the specified boot environment."
+    DEFAULT "bbl"
     DEPENDS "KernelArchRiscV"
 )
-
-if(UseRiscVBBL)
-    set(BBL_PATH ${CMAKE_SOURCE_DIR}/tools/riscv-pk CACHE STRING "BBL Folder location")
-    mark_as_advanced(FORCE BBL_PATH)
-endif()
 
 function(DeclareRootserver rootservername)
     SetSeL4Start(${rootservername})
@@ -101,37 +97,8 @@ function(DeclareRootserver rootservername)
             else()
                 set(march rv64imafdc)
             endif()
-            if(UseRiscVBBL)
-                # Package up our final elf image into the Berkeley boot loader.
-                # The host string is extracted from the cross compiler setting
-                # minus the trailing '-'
-                if("${CROSS_COMPILER_PREFIX}" STREQUAL "")
-                    message(FATAL_ERROR "CROSS_COMPILER_PREFIX not set.")
-                endif()
-
-                string(
-                    REGEX
-                    REPLACE
-                        "^(.*)-$"
-                        "\\1"
-                        host
-                        "${CROSS_COMPILER_PREFIX}"
-                )
-                get_filename_component(host ${host} NAME)
-                file(GLOB_RECURSE deps)
-                add_custom_command(
-                    OUTPUT "${CMAKE_BINARY_DIR}/bbl/bbl"
-                    COMMAND mkdir -p ${CMAKE_BINARY_DIR}/bbl
-                    COMMAND
-                        cd ${CMAKE_BINARY_DIR}/bbl && ${BBL_PATH}/configure
-                        --quiet
-                        --host=${host}
-                        --with-arch=${march}
-                        --with-payload=${elf_target_file}
-                            && make -s clean && make -s > /dev/null
-                    DEPENDS ${elf_target_file} elfloader ${USES_TERMINAL_DEBUG}
-                )
-                set(elf_target_file "${CMAKE_BINARY_DIR}/bbl/bbl")
+            if(UseBootEnv)
+                ConfigureBootEnv(${UseBootEnv})
             endif()
         endif()
         set(binary_efi_list "binary;efi")
