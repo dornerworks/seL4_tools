@@ -24,6 +24,64 @@ config_string(UbootKernelLoadAddr UBOOT_KERNEL_LOAD_ADDR
     DEPENDS "UbootPath"
 )
 
+config_string(HssPath HSS_PATH
+    "Hart Software Services project location"
+    DEFAULT ${project_dir}/tools/hart-software-services
+)
+
+config_string(U54-1EntryPoint B2C_U54_1_ENTRY_POINT
+    "Entry point address for U54 1 used in bin2chunks tool"
+    DEFAULT 0x80200000
+    DEPENDS "HssPath"
+)
+
+config_string(U54-2EntryPoint B2C_U54_2_ENTRY_POINT
+    "Entry point address for U54 2 used in bin2chunks tool"
+    DEFAULT 0x80200000
+    DEPENDS "HssPath"
+)
+
+config_string(U54-3EntryPoint U54_3_ENTRY_POINT
+    "Entry point address for U54 3 used in bin2chunks tool"
+    DEFAULT 0x80200000
+    DEPENDS "HssPath"
+)
+
+config_string(U54-4EntryPoint U54_4_ENTRY_POINT
+    "Entry point address for U54 4 used in bin2chunks tool"
+    DEFAULT 0x80200000
+    DEPENDS "HssPath"
+)
+
+config_string(B2cChunkSize B2C_CHUNK_SIZE
+    "Specify bin2chunks tool chunk size"
+    DEFAULT 32768
+    DEPENDS "HssPath"
+)
+
+config_string(B2cOwnerHart B2C_OWNER_HART
+    "Specify the owner hart used in bin2chunks tool"
+    DEFAULT 1
+    DEPENDS "HssPath"
+)
+
+config_string(B2cOwnerHartPrivMode B2C_OWNER_HART_PRIV_MODE
+    "Specify the owner hart's privilege mode used in bin2chunks tool (0 - User, 1 - Supervisor)"
+    DEFAULT 1
+    DEPENDS "HssPath"
+)
+
+config_string(B2cOwnerHartPayload B2C_OWNER_HART_PAYLOAD
+    "Specify the owner hart's binary payload used in bin2chunks tool"
+    DEFAULT ${CMAKE_BINARY_DIR}/u-boot/u-boot.bin
+    DEPENDS "HssPath"
+)
+
+config_string(B2cOwnerHartExecAddr B2C_OWNER_HART_EXEC_ADDR
+    "Specify the owner hart's execution address"
+    DEFAULT 0x80200000
+    DEPENDS "HssPath"
+)
 
 add_config_library(BootEnv "${configure_string}")
 
@@ -76,6 +134,45 @@ function(ConfigureBootEnv env_string)
             DEPENDS ${CMAKE_BINARY_DIR}/u-boot/uEnv.txt
         )
         list(APPEND boot_files "${CMAKE_BINARY_DIR}/u-boot/u-boot.bin")
+        set(boot_files ${boot_files} PARENT_SCOPE)
+    endif()
+
+    if(${env_string} MATCHES ".*hss*")
+        # Build bin2chunks tool
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/bin2chunks"
+            COMMAND cd ${HssPath}
+            COMMAND make -C ${HssPath}/tools/bin2chunks
+            COMMAND cp ${HssPath}/tools/bin2chunks/bin2chunks ${CMAKE_BINARY_DIR}/hart-software-services
+            COMMAND make -C ${HssPath}/tools/bin2chunks clean
+        )
+
+        # Build payload.bin
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/payload.bin"
+            COMMAND cd ${CMAKE_BINARY_DIR}/hart-software-services
+            COMMAND ./bin2chunks ${U54-1EntryPoint} ${U54-2EntryPoint} ${U54-3EntryPoint} ${U54-4EntryPoint} ${B2cChunkSize} ./payload.bin ${B2cOwnerHart} ${B2cOwnerHartPrivMode} ${B2cOwnerHartPayload} ${B2cOwnerHartExecAddr}
+            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
+                    cp ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin ${CMAKE_BINARY_DIR}/images
+            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/bin2chunks ${B2cOwnerHartPayload}
+        )
+        list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/payload.bin")
+
+        # Build HSS
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin"
+            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/hart-software-services
+            COMMAND cd ${HssPath} && ./thirdparty/helper_scripts/do_build
+                --out-dir ${CMAKE_BINARY_DIR}/hart-software-services
+                --cross-compiler ${CROSS_COMPILER_PREFIX}
+            COMMAND find . -name '*.o' -exec cp --parents '{}' ${CMAKE_BINARY_DIR}/hart-software-services \\\;
+            COMMAND cp *.bin *.elf *.hex *.sym ${CMAKE_BINARY_DIR}/hart-software-services
+            COMMAND make BOARD=icicle-kit-es clean
+            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
+                    cp ${CMAKE_BINARY_DIR}/hart-software-services/hss.bin ${CMAKE_BINARY_DIR}/images
+            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin
+        )
+        list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin")
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
 
