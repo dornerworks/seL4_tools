@@ -108,7 +108,7 @@ function(DeclareRootserver rootservername)
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${CMAKE_OBJCOPY} -O binary ${elf_target_file} "${IMAGE_NAME}"
-                DEPENDS ${elf_target_file} elfloader
+                DEPENDS ${elf_target_file} elfloader ${boot_files}
             )
         elseif("${ElfloaderImage}" STREQUAL "uimage")
             # Construct payload for U-Boot.
@@ -125,14 +125,14 @@ function(DeclareRootserver rootservername)
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${UIMAGE_TOOL} ${CMAKE_OBJCOPY} ${elf_target_file} ${UIMAGE_ARCH} ${IMAGE_NAME}
-                DEPENDS ${elf_target_file} elfloader
+                DEPENDS ${elf_target_file} elfloader ${boot_files}
             )
         else()
             add_custom_command(
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${CMAKE_COMMAND} -E copy ${elf_target_file} "${IMAGE_NAME}"
-                DEPENDS ${elf_target_file} elfloader
+                DEPENDS ${elf_target_file} elfloader ${boot_files}
             )
         endif()
         add_custom_target(rootserver_image ALL DEPENDS "${IMAGE_NAME}" elfloader ${rootservername})
