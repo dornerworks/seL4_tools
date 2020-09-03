@@ -138,6 +138,12 @@ function(ConfigureBootEnv env_string)
     endif()
 
     if(${env_string} MATCHES ".*hss*")
+        # Copy SD card builder script
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/make_polarfire_sd_card"
+            COMMAND cp ${project_dir}/tools/seL4/cmake-tool/helper_scripts/make_polarfire_sd_card.py
+                       ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+        )
         # Build bin2chunks tool
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/bin2chunks"
@@ -170,8 +176,9 @@ function(ConfigureBootEnv env_string)
             COMMAND make BOARD=icicle-kit-es clean
             COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
                     cp ${CMAKE_BINARY_DIR}/hart-software-services/hss.bin ${CMAKE_BINARY_DIR}/images
-            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin
+            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
         )
+
         list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin")
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
