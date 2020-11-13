@@ -83,6 +83,8 @@ config_string(B2cOwnerHartExecAddr B2C_OWNER_HART_EXEC_ADDR
     DEPENDS "HssPath"
 )
 
+set(MAKE_POLARFIRE_SD_CARD "${CMAKE_CURRENT_LIST_DIR}/../helper_scripts/make_polarfire_sd_card.py")
+
 add_config_library(BootEnv "${configure_string}")
 
 
@@ -141,8 +143,8 @@ function(ConfigureBootEnv env_string)
         # Copy SD card builder script
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/make_polarfire_sd_card"
-            COMMAND cp ${project_dir}/tools/seL4/cmake-tool/helper_scripts/make_polarfire_sd_card.py
-                       ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+            COMMAND sed 's/SEL4IMAGE/${rootservername}-image-${KernelArch}-${KernelPlatform}/g' ${MAKE_POLARFIRE_SD_CARD} > ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+            COMMAND chmod +x ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
         )
         # Build bin2chunks tool
         add_custom_command(

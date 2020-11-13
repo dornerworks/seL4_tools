@@ -10,6 +10,9 @@
 from pathlib import Path
 import argparse, subprocess, re, tempfile, os
 
+# This should get changed by sed:
+kernel_image = "SEL4IMAGE"
+
 def main():
     parser = argparse.ArgumentParser(prog='make_polarfire_sd_card.py',
                                      usage='%(prog)s --device DEVICE [options]',
@@ -119,7 +122,7 @@ def main():
     process = subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
 
     # Copy images to kernel partition
-    kernel_image = "sel4test-driver-image-riscv-polarfire"
+
     uEnv_file = "uEnv.txt"
     copy_images_cmd = ("cp" + " "
                        + images_dir + "/" + kernel_image + " "
