@@ -87,18 +87,28 @@ def main():
                 print("Unmounting " + output[n])
                 process = subprocess.run(umount_cmd, shell=True, stderr=subprocess.STDOUT)
 
+    images_dir = os.path.join(os.getcwd(), "images")
+
+    payload_size = os.path.getsize(os.path.join(images_dir, "payload.bin"))
+    sector_size = 2048
+    part1_start = sector_size
+    part1_end = part1_start + (((part1_start + payload_size)%sector_size) * sector_size)
+    part2_start = part1_end + sector_size
+    part2_end = part2_start + (((part2_start + 8396)%sector_size) * sector_size)
+
     # Format the SD card
     create_parts = ("sgdisk -Zo "
-                   "--new=1:2048:3248 --change-name=1:uboot "
+                   "--new=1:{}:{} --change-name=1:payload "
                    "--typecode=1:21686148-6449-6E6F-744E-656564454649 "
-                   "--new=2:4096:88063 --change-name=2:kernel "
-                   "--typecode=2:0FC63DAF-8483-4772-8E79-3D69D8477DE4 "
-                   + str(args.device))
+                   "--new=2:{}:{} --change-name=2:kernel "
+                    "--typecode=2:0FC63DAF-8483-4772-8E79-3D69D8477DE4 {}".format(part1_start,
+                                                                                  part1_end,
+                                                                                  part2_start,
+                                                                                  part2_end,
+                                                                                  args.device))
 
     print("Configuring the device's partition table")
     process = subprocess.run(create_parts, shell=True, check=True, stderr=subprocess.STDOUT)
-
-    images_dir = "images"
 
     payload_part = "1"
     kernel_part = "2"
