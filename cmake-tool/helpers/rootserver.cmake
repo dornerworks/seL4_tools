@@ -97,9 +97,6 @@ function(DeclareRootserver rootservername)
             else()
                 set(march rv64imafdc)
             endif()
-            if(UseBootEnv)
-                ConfigureBootEnv(${UseBootEnv})
-            endif()
         endif()
         set(binary_efi_list "binary;efi")
         if(${ElfloaderImage} IN_LIST binary_efi_list)
@@ -108,7 +105,7 @@ function(DeclareRootserver rootservername)
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${CMAKE_OBJCOPY} -O binary ${elf_target_file} "${IMAGE_NAME}"
-                DEPENDS ${elf_target_file} elfloader ${boot_files}
+                DEPENDS ${elf_target_file} elfloader
             )
         elseif("${ElfloaderImage}" STREQUAL "uimage")
             # Construct payload for U-Boot.
@@ -125,14 +122,14 @@ function(DeclareRootserver rootservername)
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${UIMAGE_TOOL} ${CMAKE_OBJCOPY} ${elf_target_file} ${UIMAGE_ARCH} ${IMAGE_NAME}
-                DEPENDS ${elf_target_file} elfloader ${boot_files}
+                DEPENDS ${elf_target_file} elfloader
             )
         else()
             add_custom_command(
                 OUTPUT "${IMAGE_NAME}"
                 COMMAND
                     ${CMAKE_COMMAND} -E copy ${elf_target_file} "${IMAGE_NAME}"
-                DEPENDS ${elf_target_file} elfloader ${boot_files}
+                DEPENDS ${elf_target_file} elfloader
             )
         endif()
         add_custom_target(rootserver_image ALL DEPENDS "${IMAGE_NAME}" elfloader ${rootservername})
@@ -157,4 +154,10 @@ function(DeclareRootserver rootservername)
     endif()
     set_property(TARGET rootserver_image PROPERTY IMAGE_NAME "${IMAGE_NAME_REL}")
     set_property(TARGET rootserver_image PROPERTY KERNEL_IMAGE_NAME "${KERNEL_IMAGE_NAME_REL}")
+    if(UseBootEnv)
+        message("Using Boot Environment")
+        ConfigureBootEnv(${UseBootEnv})
+        add_custom_target(bootloader ALL DEPENDS ${boot_files})
+        add_dependencies(bootloader rootserver_image)
+    endif()
 endfunction(DeclareRootserver)
