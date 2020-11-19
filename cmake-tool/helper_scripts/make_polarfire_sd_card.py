@@ -133,13 +133,13 @@ def main():
 
     # Copy images to kernel partition
 
-    uEnv_file = "uEnv.txt"
-    copy_images_cmd = ("cp" + " "
-                       + images_dir + "/" + kernel_image + " "
-                       + images_dir + "/" + uEnv_file + " "
-                       + mount_point)
-    print("Copying " + images_dir + "/" + kernel_image + " to " + mount_point)
-    process = subprocess.run(copy_images_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+    files_to_copy = [f for f in os.listdir(images_dir) if 'payload.bin' not in f]
+
+    for f in files_to_copy:
+        src_f = os.path.join(images_dir, f)
+        dst_f = os.path.join(mount_point, f)
+        copy_cmd = 'cp {} {}'.format(src_f, dst_f)
+        process = subprocess.run(copy_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
 
     # Unmount the partition
     umount_cmd = "umount" + " " + mount_point
