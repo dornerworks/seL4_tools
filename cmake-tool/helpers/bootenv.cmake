@@ -75,7 +75,7 @@ config_string(B2cOwnerHartPrivMode B2C_OWNER_HART_PRIV_MODE
 # This is the binary that is fed to HSS' bin2chunks tool.
 # The binary should be the program that is responsible for booting.
 # If you intend on using u-boot, set it to ${CMAKE_BINARY_DIR}/u-boot/u-boot.bin
-# If left unset, it will just use the ${elf_target_file}
+# If left unset, it will just use the ${IMAGE_NAME}
 config_string(B2cOwnerHartPayload B2C_OWNER_HART_PAYLOAD
     "Specify the owner hart's binary payload used in bin2chunks tool"
     DEFAULT FALSE
@@ -102,15 +102,23 @@ add_config_library(BootEnv "${configure_string}")
 #
 # To extend this functionality for additional bootloaders add an if
 # statement with the specified bootloader name like so
-#   if(${env_string} MATCHES ".*<name of bootloader>*")
+#   if("<name of bootloader>" IN_LIST env_BOOTLIST)
 #       # add boot procedure here
 #       list(APPEND boot_files "${CMAKE_BINARY_DIR}/<bootloader_name>/<bootloader_image>")
 #       set(boot_files ${boot_files} PARENT_SCOPE)
 #   endif()
-function(ConfigureBootEnv env_string)
-    message("Configuring boot for ${env_string}")
+function(ConfigureBootEnv)
+    cmake_parse_arguments(
+        env
+        "SINGLE"
+        "ONE"
+        "BOOTLIST"
+        ${ARGN}
+        )
+    message("Boot Environment: ${env_BOOTLIST}")
 
-    if(${env_string} MATCHES ".*u-boot*")
+    if("u-boot" IN_LIST env_BOOTLIST)
+        message("Configuring u-boot build")
         if(("${PLATFORM}" STREQUAL "polarfire") OR ("${PLATFORM}" STREQUAL "hifive"))
             set(UbootArch "riscv")
         endif()
@@ -144,10 +152,12 @@ function(ConfigureBootEnv env_string)
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
 
-    if(${env_string} MATCHES ".*hss*")
+    if("hss" IN_LIST env_BOOTLIST)
+        message("Configuring HSS build")
         # Set the payload file
         if (NOT ${B2cOwnerHartPayload})
-            set(B2cOwnerHartPayload ${elf_target_file} CACHE STRING "Bin2Chunks input file" FORCE)
+            message("B2C Payload unset, setting to ${IMAGE_NAME}")
+            set(B2cOwnerHartPayload ${IMAGE_NAME} CACHE STRING "Bin2Chunks input file" FORCE)
         endif()
         # Copy SD card builder script
         add_custom_command(
@@ -194,7 +204,7 @@ function(ConfigureBootEnv env_string)
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
 
-    if(${env_string} MATCHES ".*bbl*")
+    if("bbl" IN_LIST env_BOOTLIST)
         set(BBL_PATH ${CMAKE_SOURCE_DIR}/tools/riscv-pk CACHE STRING "BBL Folder location")
         mark_as_advanced(FORCE BBL_PATH)
 
