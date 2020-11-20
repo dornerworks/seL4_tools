@@ -71,9 +71,14 @@ config_string(B2cOwnerHartPrivMode B2C_OWNER_HART_PRIV_MODE
     DEPENDS "HssPath"
 )
 
+
+# This is the binary that is fed to HSS' bin2chunks tool.
+# The binary should be the program that is responsible for booting.
+# If you intend on using u-boot, set it to ${CMAKE_BINARY_DIR}/u-boot/u-boot.bin
+# If left unset, it will just use the ${elf_target_file}
 config_string(B2cOwnerHartPayload B2C_OWNER_HART_PAYLOAD
     "Specify the owner hart's binary payload used in bin2chunks tool"
-    DEFAULT ${CMAKE_BINARY_DIR}/u-boot/u-boot.bin
+    DEFAULT FALSE
     DEPENDS "HssPath"
 )
 
@@ -140,6 +145,10 @@ function(ConfigureBootEnv env_string)
     endif()
 
     if(${env_string} MATCHES ".*hss*")
+        # Set the payload file
+        if (NOT ${B2cOwnerHartPayload})
+            set(B2cOwnerHartPayload ${elf_target_file} CACHE STRING "Bin2Chunks input file" FORCE)
+        endif()
         # Copy SD card builder script
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/make_polarfire_sd_card"
