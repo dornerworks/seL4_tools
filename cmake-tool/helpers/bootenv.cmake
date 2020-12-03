@@ -88,7 +88,7 @@ config_string(B2cOwnerHartExecAddr B2C_OWNER_HART_EXEC_ADDR
     DEPENDS "HssPath"
 )
 
-set(MAKE_POLARFIRE_SD_CARD "${CMAKE_CURRENT_LIST_DIR}/../helper_scripts/make_polarfire_sd_card.py")
+set(MAKE_POLARFIRE_SD_CARD "${CMAKE_CURRENT_LIST_DIR}/make_polarfire_sd_card.py")
 
 add_config_library(BootEnv "${configure_string}")
 
