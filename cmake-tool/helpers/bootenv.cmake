@@ -152,13 +152,21 @@ function(ConfigureBootEnv)
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
 
+
+
     if("hss" IN_LIST env_BOOTLIST)
-        message("Configuring HSS build")
-        # Set the payload file
-        if (NOT ${B2cOwnerHartPayload})
+
+        # Set the HSS payload file
+        if ("u-boot" IN_LIST env_BOOTLIST)
+            message("Uboot and HSS being used, forcing uboot to be the HSS payload")
+            set(B2cOwnerHartPayload "${CMAKE_BINARY_DIR}/u-boot/u-boot.bin"
+                CACHE STRING "HSS Bin2Chunks input file" FORCE)
+        else()
             message("B2C Payload unset, setting to ${IMAGE_NAME}")
-            set(B2cOwnerHartPayload ${IMAGE_NAME} CACHE STRING "Bin2Chunks input file" FORCE)
+            set(B2cOwnerHartPayload ${IMAGE_NAME} CACHE STRING "HSS Bin2Chunks input file" FORCE)
         endif()
+
+        message("Configuring HSS build")
         # Copy SD card builder script
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/make_polarfire_sd_card"
@@ -205,6 +213,7 @@ function(ConfigureBootEnv)
     endif()
 
     if("bbl" IN_LIST env_BOOTLIST)
+        message("Configuring BBL build")
         set(BBL_PATH ${CMAKE_SOURCE_DIR}/tools/riscv-pk CACHE STRING "BBL Folder location")
         mark_as_advanced(FORCE BBL_PATH)
 
@@ -233,10 +242,12 @@ function(ConfigureBootEnv)
                 --quiet
                 --host=${host}
                 --with-arch=${march}
-                --with-payload=${elf_target_file}
+                --with-payload=${IMAGE_NAME}
                     && make -s clean && make -s > /dev/null
-            DEPENDS ${elf_target_file} elfloader ${USES_TERMINAL_DEBUG}
-        )
+            DEPENDS ${IMAGE_NAME} elfloader ${USES_TERMINAL_DEBUG}
+            )
+        list(APPEND boot_files "${CMAKE_BINARY_DIR}/bbl/bbl")
+        set(boot_files ${boot_files} PARENT_SCOPE)
         set(elf_target_file "${CMAKE_BINARY_DIR}/bbl/bbl" PARENT_SCOPE)
     endif()
 endfunction(ConfigureBootEnv)
