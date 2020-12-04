@@ -1,0 +1,37 @@
+:name seL4 Renode Simulation
+:description Runs seL4 images on Renode
+
+$name?="@MACHINE_NAME@"
+
+set test_platform """
+using "@RENODE_PLAT_DESC_PATH@"
+ddr:
+    size: @RENODE_PLAT_MEM_SIZE@
+"""
+
+using sysbus
+mach create $name
+$bin?=@BIN_PATH@
+$dtb?=@DTB_PATH@
+machine LoadPlatformDescriptionFromString $test_platform
+
+@SHOW_ANALYZER_0@
+@SHOW_ANALYZER_1@
+@SHOW_ANALYZER_2@
+@SHOW_ANALYZER_3@
+
+macro reset
+"""
+        sysbus LoadELF $bin
+        sysbus LoadFdt $dtb @DTB_ADDRESS@
+        e51 SetRegisterUnsafe 11 @DTB_ADDRESS@
+        u54_1 SetRegisterUnsafe 11 @DTB_ADDRESS@
+"""
+
+runMacro $reset
+
+@START_GDB_CPU0@
+@START_GDB_CPU1@
+@START_GDB_CPU2@
+@START_GDB_CPU3@
+@START_GDB_CPU4@

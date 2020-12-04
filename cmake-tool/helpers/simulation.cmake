@@ -10,7 +10,12 @@ include_guard(GLOBAL)
 include("${KERNEL_HELPERS_PATH}")
 RequireFile(SIMULATE_SCRIPT simulate.py PATHS "${CMAKE_CURRENT_LIST_DIR}/../simulate_scripts/")
 RequireFile(GDB_SCRIPT launch_gdb.py PATHS "${CMAKE_CURRENT_LIST_DIR}/../simulate_scripts/")
+RequireFile(RENODE_RESC sel4.resc PATHS "${CMAKE_CURRENT_LIST_DIR}/../simulate_scripts/")
 RequireFile(CONFIGURE_FILE_SCRIPT configure_file.cmake PATHS "${CMAKE_CURRENT_LIST_DIR}")
+
+config_string(SimulationEngine SIM_ENGINE
+    "The simulation engine to use"
+    DEFAULT "QEMU")
 
 # Help macro for testing a config and appending to a list that is destined for a qemu -cpu line
 macro(TestQemuCPUFeature config feature string)
@@ -36,7 +41,7 @@ macro(SetDefaultMemSize default)
     set(
         QemuMemSize
         "$<IF:$<BOOL:$<TARGET_PROPERTY:simulation_script_prop_target,MEM_SIZE>>,$<TARGET_PROPERTY:simulation_script_prop_target,MEM_SIZE>,${default}>"
-    )
+        )
 endmacro(SetDefaultMemSize)
 
 # Helper function that generates targets that will attempt to generate a ./simulate style script
@@ -44,114 +49,165 @@ function(GenerateSimulateScript)
     set(error "")
     set(KERNEL_IMAGE_NAME "$<TARGET_PROPERTY:rootserver_image,KERNEL_IMAGE_NAME>")
     set(IMAGE_NAME "$<TARGET_PROPERTY:rootserver_image,IMAGE_NAME>")
-    # Define simulation script target if it doesn't exist to simplify the generator expressions
-    if(NOT (TARGET simulation_script_prop_target))
-        add_custom_target(simulation_script_prop_target)
-    endif()
-    set(
-        sim_graphic_opt
-        "$<IF:$<BOOL:$<TARGET_PROPERTY:simulation_script_prop_target,GRAPHIC>>,,-nographic>"
-    )
-    set(sim_serial_opt "")
-    set(sim_cpu "")
-    set(sim_cpu_opt "")
-    set(sim_machine "")
-    if(KernelArchX86)
-        # Try and simulate the correct micro architecture and features
-        if(KernelX86MicroArchNehalem)
-            set(sim_cpu "Nehalem")
-        elseif(KernelX86MicroArchGeneric)
-            set(sim_cpu "qemu64")
-        elseif(KernelX86MicroArchWestmere)
-            set(sim_cpu "Westmere")
-        elseif(KernelX86MicroArchSandy)
-            set(sim_cpu "SandyBridge")
-        elseif(KernelX86MicroArchIvy)
-            set(sim_cpu "IvyBridge")
-        elseif(KernelX86MicroArchHaswell)
-            set(sim_cpu "Haswell")
-        elseif(KernelX86MicroArchBroadwell)
-            set(sim_cpu "Broadwell")
+    if(SimulationEngine MATCHES "QEMU")
+        # Define simulation script target if it doesn't exist to simplify the generator expressions
+        message("QEMU Simulation Engine Chosen")
+        if(NOT (TARGET simulation_script_prop_target))
+            add_custom_target(simulation_script_prop_target)
+        endif()
+        set(
+            sim_graphic_opt
+            "$<IF:$<BOOL:$<TARGET_PROPERTY:simulation_script_prop_target,GRAPHIC>>,,-nographic>"
+            )
+        set(sim_serial_opt "")
+        set(sim_cpu "")
+        set(sim_cpu_opt "")
+        set(sim_machine "")
+        if(KernelArchX86)
+            # Try and simulate the correct micro architecture and features
+            if(KernelX86MicroArchNehalem)
+                set(sim_cpu "Nehalem")
+            elseif(KernelX86MicroArchGeneric)
+                set(sim_cpu "qemu64")
+            elseif(KernelX86MicroArchWestmere)
+                set(sim_cpu "Westmere")
+            elseif(KernelX86MicroArchSandy)
+                set(sim_cpu "SandyBridge")
+            elseif(KernelX86MicroArchIvy)
+                set(sim_cpu "IvyBridge")
+            elseif(KernelX86MicroArchHaswell)
+                set(sim_cpu "Haswell")
+            elseif(KernelX86MicroArchBroadwell)
+                set(sim_cpu "Broadwell")
+            else()
+                set(error "Unknown x86 micro-architecture for simulation")
+            endif()
+            TestQemuCPUFeature(KernelVTX vme sim_cpu_opt)
+            TestQemuCPUFeature(KernelHugePage pdpe1gb sim_cpu_opt)
+            TestQemuCPUFeature(KernelFPUXSave xsave sim_cpu_opt)
+            TestQemuCPUFeature(KernelXSaveXSaveOpt xsaveopt sim_cpu_opt)
+            TestQemuCPUFeature(KernelXSaveXSaveC xsavec sim_cpu_opt)
+            TestQemuCPUFeature(KernelFSGSBaseInst fsgsbase sim_cpu_opt)
+            TestQemuCPUFeature(KernelSupportPCID invpcid sim_cpu_opt)
+            set(sim_cpu "${sim_cpu}")
+            set(sim_cpu_opt "${sim_cpu_opt},enforce")
+            set(QemuBinaryMachine "qemu-system-x86_64")
+            set(sim_serial_opt "-serial mon:stdio")
+            SetDefaultMemSize("512M")
+        elseif(KernelPlatformKZM)
+            set(QemuBinaryMachine "qemu-system-arm")
+            set(sim_machine "kzm")
+            SetDefaultMemSize("128M")
+        elseif(KernelPlatformSabre)
+            set(QemuBinaryMachine "qemu-system-arm")
+            # '-serial null -serial mon:stdio' means connect second UART to
+            # the terminal and ignore the first UART
+            set(sim_serial_opt "-serial null -serial mon:stdio")
+            set(sim_machine "sabrelite")
+            SetDefaultMemSize("1024M")
+        elseif(KernelPlatformZynq7000)
+            set(QemuBinaryMachine "qemu-system-arm")
+            set(sim_serial_opt "-serial null -serial mon:stdio")
+            set(sim_machine "xilinx-zynq-a9")
+            SetDefaultMemSize("1024M")
+        elseif(KernelPlatformWandQ)
+            set(QemuBinaryMachine "qemu-system-arm")
+            set(sim_serial_opt "-serial mon:stdio")
+            set(sim_machine "sabrelite")
+            SetDefaultMemSize("2048M")
+        elseif(KernelPlatformRpi3 AND KernelSel4ArchAarch64)
+            set(QemuBinaryMachine "qemu-system-aarch64")
+            set(sim_serial_opt "-serial null -serial mon:stdio")
+            set(sim_machine "raspi3")
+            SetDefaultMemSize("1024M")
+        elseif(KernelPlatformSpike)
+            if(KernelSel4ArchRiscV32)
+                set(binary "qemu-system-riscv32")
+                SetDefaultMemSize("2000M")
+                set(sim_machine "virt")
+            elseif(KernelSel4ArchRiscV64)
+                set(binary "qemu-system-riscv64")
+                SetDefaultMemSize("4095M")
+                set(sim_machine "spike_v1.10")
+            endif()
+            set(QemuBinaryMachine "${binary}")
+            set(sim_serial_opt "-serial mon:stdio")
+        elseif(KernelPlatformQEMUArmVirt)
+            set(QemuBinaryMachine "qemu-system-${QEMU_ARCH}")
+            if(KernelArmHypervisorSupport)
+                set(sim_machine "virt,virtualization=on,highmem=off,secure=off")
+            else()
+                set(sim_machine "virt")
+            endif()
+            set(sim_graphic_opt "-nographic")
+            set(sim_cpu "${KernelArmCPU}")
+            SetDefaultMemSize("${QEMU_MEMORY}")
         else()
-            set(error "Unknown x86 micro-architecture for simulation")
+            set(error "Unsupported platform or architecture for QEMU simulation")
         endif()
-        TestQemuCPUFeature(KernelVTX vme sim_cpu_opt)
-        TestQemuCPUFeature(KernelHugePage pdpe1gb sim_cpu_opt)
-        TestQemuCPUFeature(KernelFPUXSave xsave sim_cpu_opt)
-        TestQemuCPUFeature(KernelXSaveXSaveOpt xsaveopt sim_cpu_opt)
-        TestQemuCPUFeature(KernelXSaveXSaveC xsavec sim_cpu_opt)
-        TestQemuCPUFeature(KernelFSGSBaseInst fsgsbase sim_cpu_opt)
-        TestQemuCPUFeature(KernelSupportPCID invpcid sim_cpu_opt)
-        set(sim_cpu "${sim_cpu}")
-        set(sim_cpu_opt "${sim_cpu_opt},enforce")
-        set(QemuBinaryMachine "qemu-system-x86_64")
-        set(sim_serial_opt "-serial mon:stdio")
-        SetDefaultMemSize("512M")
-    elseif(KernelPlatformKZM)
-        set(QemuBinaryMachine "qemu-system-arm")
-        set(sim_machine "kzm")
-        SetDefaultMemSize("128M")
-    elseif(KernelPlatformSabre)
-        set(QemuBinaryMachine "qemu-system-arm")
-        # '-serial null -serial mon:stdio' means connect second UART to
-        # the terminal and ignore the first UART
-        set(sim_serial_opt "-serial null -serial mon:stdio")
-        set(sim_machine "sabrelite")
-        SetDefaultMemSize("1024M")
-    elseif(KernelPlatformZynq7000)
-        set(QemuBinaryMachine "qemu-system-arm")
-        set(sim_serial_opt "-serial null -serial mon:stdio")
-        set(sim_machine "xilinx-zynq-a9")
-        SetDefaultMemSize("1024M")
-    elseif(KernelPlatformWandQ)
-        set(QemuBinaryMachine "qemu-system-arm")
-        set(sim_serial_opt "-serial mon:stdio")
-        set(sim_machine "sabrelite")
-        SetDefaultMemSize("2048M")
-    elseif(KernelPlatformRpi3 AND KernelSel4ArchAarch64)
-        set(QemuBinaryMachine "qemu-system-aarch64")
-        set(sim_serial_opt "-serial null -serial mon:stdio")
-        set(sim_machine "raspi3")
-        SetDefaultMemSize("1024M")
-    elseif(KernelPlatformSpike)
-        if(KernelSel4ArchRiscV32)
-            set(binary "qemu-system-riscv32")
-            SetDefaultMemSize("2000M")
-            set(sim_machine "virt")
-        elseif(KernelSel4ArchRiscV64)
-            set(binary "qemu-system-riscv64")
-            SetDefaultMemSize("4095M")
-            set(sim_machine "spike_v1.10")
-        endif()
-        set(QemuBinaryMachine "${binary}")
-        set(sim_serial_opt "-serial mon:stdio")
-    elseif(KernelPlatformQEMUArmVirt)
-        set(QemuBinaryMachine "qemu-system-${QEMU_ARCH}")
-        if(KernelArmHypervisorSupport)
-            set(sim_machine "virt,virtualization=on,highmem=off,secure=off")
+    elseif(SimulationEngine MATCHES "Renode")
+        message("Renode Simulation Engine Chosen")
+        if(KernelPlatformPolarfire)
+            set(RenodeSimName "PolarFireSoC")
+            set(RenodePlatType "boards")
+            set(RenodePlatName "mpfs-icicle-kit")
+            set(RenodePlatMemSize "0x40000000")
+            set(RenodeAnalyzer0 "showAnalyzer mmuart0")
+            set(RenodeAnalyzer1 "showAnalyzer mmuart1")
+            set(RenodeAnalyzer2 "showAnalyzer mmuart2")
+            set(RenodeAnalyzer3 "showAnalyzer mmuart3")
+            set(RenodeDtbAddress 0x81000000)
+            # machine StartGdbServer 3333 true e51/u54_N
+            set(RenodeGDBCPU0 "")
+            set(RenodeGDBCPU1 "")
+            set(RenodeGDBCPU2 "")
+            set(RenodeGDBCPU3 "")
+            set(RenodeGDBCPU4 "")
+
+        elseif(KernelPlatformHifive)
+            # Must increase ddr size in <renode-install>/scripts/platforms/cpus/sifive-fu540
+            set(RenodeSimName "HiFiveUnleashed")
+            set(RenodePlatType "cpus")
+            set(RenodePlatName "sifive-fu540")
+            set(RenodePlatMemSize "0x200000000") # 8 GiB
+            set(RenodeAnalyzer0 "showAnalyzer uart0")
+            set(RenodeAnalyzer1 "")
+            set(RenodeAnalyzer2 "")
+            set(RenodeAnalyzer3 "")
+            set(RenodeDtbAddress 0x81000000)
+            # machine StartGdbServer 3333 true e51/u54_N
+            set(RenodeGDBCPU0 "")
+            set(RenodeGDBCPU1 "")
+            set(RenodeGDBCPU2 "")
+            set(RenodeGDBCPU3 "")
+            set(RenodeGDBCPU4 "")
         else()
-            set(sim_machine "virt")
+            set(error "Unsupported platform or architecture for Renode simulation")
         endif()
-        set(sim_graphic_opt "-nographic")
-        set(sim_cpu "${KernelArmCPU}")
-        SetDefaultMemSize("${QEMU_MEMORY}")
-    else()
-        set(error "Unsupported platform or architecture for simulation")
+        if("bbl" IN_LIST UseBootEnv)
+            message("Detected BBL Boot Environment for Renode Simulation")
+            set(RenodeBin "@./bbl/bbl")
+        else()
+            set(RenodeBin "@./${IMAGE_NAME}")
+        endif()
     endif()
     set(sim_path "${CMAKE_BINARY_DIR}/simulate")
     set(gdb_path "${CMAKE_BINARY_DIR}/launch_gdb")
+    message("Simulation Script Config Done")
     if(NOT "${error}" STREQUAL "")
+        message("Errors Found in simulation configuration")
+        message("${error}")
         set(script "#!/bin/sh\\necho ${error} && exit 1\\n")
         add_custom_command(
             OUTPUT "${sim_path}" "${gdb_path}"
             COMMAND
-                printf "${script}" > "${sim_path}"
+            printf "${script}" > "${sim_path}"
             COMMAND
-                printf "${script}" > "${gdb_path}"
+            printf "${script}" > "${gdb_path}"
             COMMAND
-                chmod u+x "${sim_path}" "${gdb_path}"
+            chmod u+x "${sim_path}" "${gdb_path}"
             VERBATIM
-        )
+            )
     else()
         # We assume a x86 host, but will provide options to override the default gdb binary
         if(KernelArchX86)
@@ -159,9 +215,11 @@ function(GenerateSimulateScript)
         else()
             set(GdbBinary "gdb-multiarch")
         endif()
-        add_custom_command(
-            OUTPUT "${sim_path}"
-            COMMAND
+        if (SimulationEngine MATCHES "QEMU")
+            message("Generating QEMU Simulation Script")
+            add_custom_command(
+                OUTPUT "${sim_path}"
+                COMMAND
                 ${CMAKE_COMMAND} -DCONFIGURE_INPUT_FILE=${SIMULATE_SCRIPT}
                 -DCONFIGURE_OUTPUT_FILE=${sim_path} -DQEMU_SIM_BINARY=${QemuBinaryMachine}
                 -DQEMU_SIM_CPU=${sim_cpu} -DQEMU_SIM_MACHINE=${sim_machine}
@@ -170,20 +228,52 @@ function(GenerateSimulateScript)
                 -DQEMU_SIM_KERNEL_FILE=${KERNEL_IMAGE_NAME} -DQEMU_SIM_INITRD_FILE=${IMAGE_NAME}
                 -DQEMU_SIM_EXTRA_ARGS=${qemu_sim_extra_args} -P
                 ${CONFIGURE_FILE_SCRIPT}
-            COMMAND chmod u+x "${sim_path}"
-            VERBATIM COMMAND_EXPAND_LISTS
-        )
+                COMMAND chmod u+x "${sim_path}"
+                VERBATIM COMMAND_EXPAND_LISTS
+                )
+            add_custom_target(simulate_gen ALL DEPENDS "${sim_path}")
+        elseif(SimulationEngine MATCHES "Renode")
+            message("Generating Renode Simulation Script")
+            add_custom_command(
+                OUTPUT ${CMAKE_BINARY_DIR}/${RenodeSimName}.resc
+                COMMAND
+                ${CMAKE_COMMAND} -DCONFIGURE_INPUT_FILE=${RENODE_RESC}
+                -DCONFIGURE_OUTPUT_FILE=${CMAKE_BINARY_DIR}/${RenodeSimName}.resc
+                -DMACHINE_NAME=sel4
+                -DRENODE_PLAT_MEM_SIZE=${RenodePlatMemSize}
+                -DRENODE_PLAT_DESC_PATH=platforms/${RenodePlatType}/${RenodePlatName}.repl
+                -DBIN_PATH=${RenodeBin}
+                -DDTB_PATH=@./kernel/kernel.dtb
+                -DSHOW_ANALYZER_0=${RenodeAnalyzer0}
+                -DSHOW_ANALYZER_1=${RenodeAnalyzer1}
+                -DSHOW_ANALYZER_2=${RenodeAnalyzer2}
+                -DSHOW_ANALYZER_3=${RenodeAnalyzer3}
+                -DDTB_ADDRESS=${RenodeDtbAddress}
+                -DSTART_GDB_CPU0=${RenodeGDBCPU0}
+                -DSTART_GDB_CPU1=${RenodeGDBCPU1}
+                -DSTART_GDB_CPU2=${RenodeGDBCPU2}
+                -DSTART_GDB_CPU3=${RenodeGDBCPU3}
+                -DSTART_GDB_CPU4=${RenodeGDBCPU4}
+                -P ${CONFIGURE_FILE_SCRIPT}
+                VERBATIM COMMAND_EXPAND_LISTS
+                )
+            add_custom_target(simulate_gen ALL DEPENDS "${CMAKE_BINARY_DIR}/${RenodeSimName}.resc")
+        else()
+            messasge("Unknown Simulation Engine: ${SimulationEngine}")
+        endif()
         add_custom_command(
             OUTPUT "${gdb_path}"
             COMMAND
-                ${CMAKE_COMMAND} -DCONFIGURE_INPUT_FILE=${GDB_SCRIPT}
-                -DCONFIGURE_OUTPUT_FILE=${gdb_path} -DGDB_BINARY=${GdbBinary}
-                -DQEMU_SIM_KERNEL_FILE=${KERNEL_IMAGE_NAME} -DQEMU_SIM_INITRD_FILE=${IMAGE_NAME} -P
-                ${CONFIGURE_FILE_SCRIPT}
+            ${CMAKE_COMMAND} -DCONFIGURE_INPUT_FILE=${GDB_SCRIPT}
+            -DCONFIGURE_OUTPUT_FILE=${gdb_path} -DGDB_BINARY=${GdbBinary}
+            -DQEMU_SIM_KERNEL_FILE=${KERNEL_IMAGE_NAME} -DQEMU_SIM_INITRD_FILE=${IMAGE_NAME} -P
+            ${CONFIGURE_FILE_SCRIPT}
             COMMAND chmod u+x "${gdb_path}"
             VERBATIM COMMAND_EXPAND_LISTS
-        )
+            )
+        add_custom_target(gdb_gen ALL DEPENDS "${gdb_path}")
     endif()
-    add_custom_target(simulate_gen ALL DEPENDS "${sim_path}")
-    add_custom_target(gdb_gen ALL DEPENDS "${gdb_path}")
+
+
+
 endfunction(GenerateSimulateScript)
