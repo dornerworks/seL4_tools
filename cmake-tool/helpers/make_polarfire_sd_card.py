@@ -11,7 +11,7 @@ from pathlib import Path
 import argparse, subprocess, re, tempfile, os
 
 # This should get changed by sed:
-kernel_image = "SEL4IMAGE"
+kernel_image = "@SEL4IMAGE@"
 
 def main():
     parser = argparse.ArgumentParser(prog='make_polarfire_sd_card.py',

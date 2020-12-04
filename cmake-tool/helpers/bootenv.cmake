@@ -6,6 +6,7 @@
 #
 
 set(configure_string "")
+RequireFile(CONFIGURE_FILE_SCRIPT configure_file.cmake PATHS "${CMAKE_CURRENT_LIST_DIR}")
 
 config_string(UbootPath UBOOT_PATH
     "U-Boot project location"
@@ -170,8 +171,13 @@ function(ConfigureBootEnv)
         # Copy SD card builder script
         add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/make_polarfire_sd_card"
-            COMMAND sed 's/SEL4IMAGE/${rootservername}-image-${KernelArch}-${KernelPlatform}/g' ${MAKE_POLARFIRE_SD_CARD} > ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+            COMMAND
+            ${CMAKE_COMMAND} -DCONFIGURE_INPUT_FILE=${MAKE_POLARFIRE_SD_CARD}
+            -DCONFIGURE_OUTPUT_FILE=${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+            -DSEL4IMAGE=${rootservername}-image-${KernelArch}-${KernelPlatform}
+            -P ${CONFIGURE_FILE_SCRIPT}
             COMMAND chmod +x ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+            VERBATIM COMMAND_EXPAND_LISTS
         )
         # Build bin2chunks tool
         add_custom_command(
