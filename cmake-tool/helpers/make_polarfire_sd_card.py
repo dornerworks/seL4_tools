@@ -191,18 +191,41 @@ def main():
             print('!! Error Copying {} !!'.format(src_f))
             print(copy_process.stderr.decode())
             sys.exit(1)
+    try:
+        udisk_unmount_cmd = 'udisksctl unmount --block-device {}'.format(args.device+kernel_part)
+        udisk_pwroff_cmd = 'udisksctl power-off --block-device {}'.format(args.device+kernel_part)
+        udisk_unmount_process = subprocess.run(udisk_unmount_cmd,
+                                               shell=True,
+                                               check=False,
+                                               stderr=subprocess.PIPE)
+        if udisk_unmount_process.returncode != 0:
+            print('!! Error unmounting with udisksctl')
+            print(udisk_unmount_process.stderr.decode())
+            raise Exception('Unable to use udisksctl to unmount, trying umount')
 
-    # Unmount the partition
-    umount_cmd = "umount" + " " + mount_point
-    print("Unmounting " + mount_point)
-    umount_process = subprocess.run(umount_cmd,
-                                    shell=True,
-                                    check=False,
-                                    stderr=subprocess.PIPE)
-    if umount_process.returncode != 0:
-        print('!! Error unmounting SD Card partition !!')
-        print(umount_process.stderr.decode())
-        sys.exit(1)
+        udisk_pwroff_process = subprocess.run(udisk_pwroff_cmd,
+                                              shell=True,
+                                              check=False,
+                                              stderr=subprocess.PIPE)
+        if udisk_pwroff_process.returncode != 0:
+            print('!! Error powering off device with udisksctl')
+            print(udisk_pwroff_process.stderr.decode())
+            sys.exit(1)
+
+    except:
+        print('Unable to unmount and power off device with udisksctl')
+        print('Using umount command')
+        # Unmount the partition
+        umount_cmd = "umount" + " " + mount_point
+        print("Unmounting " + mount_point)
+        umount_process = subprocess.run(umount_cmd,
+                                        shell=True,
+                                        check=False,
+                                        stderr=subprocess.PIPE)
+        if umount_process.returncode != 0:
+            print('!! Error unmounting SD Card partition !!')
+            print(umount_process.stderr.decode())
+            sys.exit(1)
 
     print("Deleting " + mount_point)
     os.rmdir(mount_point)
