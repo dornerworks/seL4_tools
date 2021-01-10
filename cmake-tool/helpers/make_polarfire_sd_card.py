@@ -8,7 +8,7 @@
 #
 
 from pathlib import Path
-import argparse, subprocess, re, tempfile, os
+import argparse, subprocess, re, tempfile, os, sys
 
 # This should get changed by sed:
 kernel_image = "@SEL4IMAGE@"
@@ -43,9 +43,18 @@ def main():
 
     # Find mounted partitions
     df_cmd = "df -h"
-    process = subprocess.run(df_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    df_process = subprocess.run(df_cmd,
+                                shell=True,
+                                check=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
 
-    output = process.stdout.decode('ascii').split()
+    if df_process.returncode != 0:
+        print('!! Error Running DF !!')
+        print(df_process.stderr.decode())
+        sys.exit(1)
+
+    output = df_process.stdout.decode('ascii').split()
 
     protected_mounts = ["/bin",
                         "/boot",
@@ -85,7 +94,13 @@ def main():
                 # Unmount device partition if mounted
                 umount_cmd = "umount" + " " + output[n]
                 print("Unmounting " + output[n])
-                process = subprocess.run(umount_cmd, shell=True, stderr=subprocess.STDOUT)
+                umount_process = subprocess.run(umount_cmd,
+                                                shell=True,
+                                                check=False,
+                                                stderr=subprocess.PIPE)
+                if umount_process.returncode != 0:
+                    print('!! Error unmounting {}'.format(output[n]))
+                    print(umount_process.stderr.decode())
 
     images_dir = os.path.join(os.getcwd(), "images")
 
@@ -107,8 +122,16 @@ def main():
                                                                                   part2_end,
                                                                                   args.device))
 
+    create_parts_process = subprocess.run(create_parts,
+                                          shell=True,
+                                          check=False,
+                                          stderr=subprocess.PIPE)
+    if create_parts_process.returncode != 0:
+        print('!! Error Creating Partitions !!')
+        print(create_parts_process.stderr.decode())
+        sys.exit(1)
+
     print("Configuring the device's partition table")
-    process = subprocess.run(create_parts, shell=True, check=True, stderr=subprocess.STDOUT)
 
     payload_part = "1"
     kernel_part = "2"
@@ -117,19 +140,40 @@ def main():
     dd_cmd = ("dd if=" + images_dir + "/" + "payload.bin" + " " + "of=" + args.device
              + payload_part)
     print("Writing " + images_dir + "/" + "payload.bin" + " to " + args.device + kernel_part)
-    process = subprocess.run(dd_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+    dd_process = subprocess.run(dd_cmd,
+                                shell=True,
+                                check=False,
+                                stderr=subprocess.PIPE)
+    if dd_process.returncode != 0:
+        print('!! Error Running DD !!')
+        print(dd_process.stderr.decode())
+        sys.exit(1)
 
     # Format kernel partition
     format_cmd = "mkfs.vfat -F16" + " " + args.device + kernel_part
     print("Formatting " + args.device + kernel_part + " to " + "FAT16")
-    process = subprocess.run(format_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+    format_process = subprocess.run(format_cmd,
+                                    shell=True,
+                                    check=False,
+                                    stderr=subprocess.PIPE)
+    if format_process.returncode != 0:
+        print('!! Error Formatting SD Card !!')
+        print(format_process.stderr.decode())
+        sys.exit(1)
 
     # Mount the kernel partition
     mount_point = tempfile.mkdtemp(prefix="polarfire-sd-")
 
     mount_cmd = "mount" + " " + args.device + kernel_part + " " + mount_point
     print("Mounting " + args.device + kernel_part + " to " + mount_point)
-    process = subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+    mount_process = subprocess.run(mount_cmd,
+                                   shell=True,
+                                   check=False,
+                                   stderr=subprocess.PIPE)
+    if mount_process.returncode !=0:
+        print('!! Error Mounting SD Card Partition !!')
+        print(mount_process.stderr.decode())
+        sys.exit(1)
 
     # Copy images to kernel partition
 
@@ -139,12 +183,26 @@ def main():
         src_f = os.path.join(images_dir, f)
         dst_f = os.path.join(mount_point, f)
         copy_cmd = 'cp {} {}'.format(src_f, dst_f)
-        process = subprocess.run(copy_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+        copy_process = subprocess.run(copy_cmd,
+                                      shell=True,
+                                      check=False,
+                                      stderr=subprocess.PIPE)
+        if copy_process.returncode != 0:
+            print('!! Error Copying {} !!'.format(src_f))
+            print(copy_process.stderr.decode())
+            sys.exit(1)
 
     # Unmount the partition
     umount_cmd = "umount" + " " + mount_point
     print("Unmounting " + mount_point)
-    process = subprocess.run(umount_cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+    umount_process = subprocess.run(umount_cmd,
+                                    shell=True,
+                                    check=False,
+                                    stderr=subprocess.PIPE)
+    if umount_process.returncode != 0:
+        print('!! Error unmounting SD Card partition !!')
+        print(umount_process.stderr.decode())
+        sys.exit(1)
 
     print("Deleting " + mount_point)
     os.rmdir(mount_point)
