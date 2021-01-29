@@ -195,26 +195,29 @@ function(ConfigureBootEnv)
             COMMAND ./bin2chunks ${U54-1EntryPoint} ${U54-2EntryPoint} ${U54-3EntryPoint} ${U54-4EntryPoint} ${B2cChunkSize} ./payload.bin ${B2cOwnerHart} ${B2cOwnerHartPrivMode} ${B2cOwnerHartPayload} ${B2cOwnerHartExecAddr}
             COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
                     cp ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin ${CMAKE_BINARY_DIR}/images
-            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/bin2chunks ${B2cOwnerHartPayload}
+            DEPENDS
+            ${CMAKE_BINARY_DIR}/hart-software-services/bin2chunks
+            ${B2cOwnerHartPayload}
+            ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
         )
         list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/payload.bin")
 
         # Build HSS
-        add_custom_command(
-            OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin"
-            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/hart-software-services
-            COMMAND cd ${HssPath} && ./thirdparty/helper_scripts/do_build
-                --out-dir ${CMAKE_BINARY_DIR}/hart-software-services
-                --cross-compiler ${CROSS_COMPILER_PREFIX}
-            COMMAND find . -name '*.o' -exec cp --parents '{}' ${CMAKE_BINARY_DIR}/hart-software-services \\\;
-            COMMAND cp *.bin *.elf *.hex *.sym ${CMAKE_BINARY_DIR}/hart-software-services
-            COMMAND make BOARD=icicle-kit-es clean
-            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
-                    cp ${CMAKE_BINARY_DIR}/hart-software-services/hss.bin ${CMAKE_BINARY_DIR}/images
-            DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
-        )
+        # add_custom_command(
+        #     OUTPUT "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin"
+        #     COMMAND mkdir -p ${CMAKE_BINARY_DIR}/hart-software-services
+        #     COMMAND cd ${HssPath} && ./thirdparty/helper_scripts/do_build
+        #         --out-dir ${CMAKE_BINARY_DIR}/hart-software-services
+        #         --cross-compiler ${CROSS_COMPILER_PREFIX}
+        #     COMMAND find . -name '*.o' -exec cp --parents '{}' ${CMAKE_BINARY_DIR}/hart-software-services \\\;
+        #     COMMAND cp *.bin *.elf *.hex *.sym ${CMAKE_BINARY_DIR}/hart-software-services
+        #     COMMAND make BOARD=icicle-kit-es clean
+        #     COMMAND mkdir -p ${CMAKE_BINARY_DIR}/images &&
+        #             cp ${CMAKE_BINARY_DIR}/hart-software-services/hss.bin ${CMAKE_BINARY_DIR}/images
+        #     DEPENDS ${CMAKE_BINARY_DIR}/hart-software-services/payload.bin ${CMAKE_BINARY_DIR}/make_polarfire_sd_card
+        # )
 
-        list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin")
+        # list(APPEND boot_files "${CMAKE_BINARY_DIR}/hart-software-services/hss.bin")
         set(boot_files ${boot_files} PARENT_SCOPE)
     endif()
 
